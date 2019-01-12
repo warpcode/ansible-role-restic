@@ -1,0 +1,12 @@
+---
+- name: Init repositories
+  command: '{{ restic_bin_dir }}/restic init'
+  environment: "{{ item.environment | d({}) | combine({'RESTIC_PASSWORD': item.password | trim | quote, 'RESTIC_REPOSITORY': item.url | trim | quote}) }}"
+  no_log: false
+  register: __restic_repo_init
+  changed_when: "'created restic repository' in __restic_repo_init.stdout"
+  failed_when:
+    - __restic_repo_init.rc != 0
+    - not 'config already initialized' in __restic_repo_init.stderr
+  with_items: '{{ restic_repositories }}'
+  when: item.init is defined and item.init

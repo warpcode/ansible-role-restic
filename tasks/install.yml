@@ -1,0 +1,80 @@
+---
+- name: Install required packages
+  package:
+    name: '{{ item }}'
+    state: present
+  become: yes
+  with_items: '{{ restic_packages }}'
+
+- name: Ensure dirs exists with correct perms
+  file:
+    dest: "{{ dirpath }}"
+    state: directory
+    owner: "{{ restic_owner }}"
+    group: "{{ restic_group }}"
+    recurse: no
+  become: yes
+  with_items:
+    - "{{ restic_src_dir }}"
+    - "{{ restic_bin_dir }}"
+  loop_control:
+    loop_var: dirpath
+
+- name: Get latest version number
+  block:
+    - name: Get latest github info
+      uri:
+        url: https://api.github.com/repos/restic/restic/releases/latest
+        method: GET
+        return_content: yes
+      register: restic_github_info
+      check_mode: no
+    - name: Set/modify fact restic_version
+      set_fact:
+        restic_version: "{{ (restic_github_info.content|from_json).tag_name[1:] }}"
+      check_mode: no
+  when: restic_version == 'latest'
+
+- name: Download the compressed binary
+  get_url:
+    url: "https://github.com/restic/restic/releases/download/v{{ restic_version }}/{{ restic_file }}.bz2"
+    dest: "{{ restic_src_dir}}/{{ restic_file }}.bz2"
+    force: True
+  register: __restic_get_url
+
+- name: Check if the binary already exists
+  stat: 
+    path: "{{ restic_src_dir}}/{{ restic_file }}"
+  register: __restic_binary
+  
+- name: uncompress the binary
+  shell: "bzip2 -dc {{ __restic_get_url.dest }} > {{ restic_src_dir}}/{{ restic_file }}"
+  args:
+    creates: "{{ restic_src_dir}}/{{ restic_file }}"
+  when: __restic_get_url.changed or not __restic_binary.stat.exists
+
+- name: Collect list of old versions downloaded
+  find:
+    paths: "{{ restic_src_dir}}"
+    hidden: true
+    recurse: false
+  register: __restic_collected_directories
+
+- name: Remove old versions
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  when: 
+    - item.path != restic_src_dir + '/' + restic_file
+    - item.path != restic_src_dir + '/' + restic_file + '.bz2'
+  with_items: "{{ __restic_collected_directories.files }}"
+
+- name: install restic - copy binary
+  copy:
+    src: "{{ restic_src_dir}}/{{ restic_file }}"
+    dest: "{{ restic_bin_dir }}/restic"
+    mode: 0755
+    owner: "{{ restic_owner }}"
+    group: "{{ restic_group }}"
+    remote_src: true
+  become: yes

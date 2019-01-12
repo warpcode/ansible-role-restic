@@ -1,0 +1,16 @@
+---
+# restic version can be defined as a release number (0.9.4) or "latest"
+restic_version: "latest"
+restic_arch: amd64
+restic_system: "{{ ansible_system | lower }}"
+restic_path_prefix: /opt/restic
+restic_src_dir: "{{ restic_path_prefix }}/src/restic"
+restic_bin_dir: "{{ restic_path_prefix }}/bin"
+restic_file: "restic_{{ restic_version }}_{{ restic_system }}_{{ restic_arch }}"
+restic_owner: "root"
+restic_group: "root"
+
+restic_packages: 
+  - bzip2
+
+restic_repositories: []
