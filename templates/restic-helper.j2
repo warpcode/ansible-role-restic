@@ -1,0 +1,18 @@
+#!/bin/sh
+{{ ansible_managed | comment }}
+(
+    # Environment setup
+    RESTIC_REPOSITORY={{ item.url | trim | quote }}
+    export RESTIC_REPOSITORY
+    RESTIC_PASSWORD={{ item.password | trim | quote }}
+    export RESTIC_PASSWORD
+    {% if item.environment is defined %}
+    {% for k,v in item.environment.items() %}
+    {{ k | upper }}={{ v | trim | quote }}
+    export {{ k | upper }}
+    {% endfor %}
+    {% endif %}
+
+    # Run restic
+    {{ restic_bin_dir }}/restic $@
+)

@@ -14,3 +14,9 @@ restic_packages:
   - bzip2
 
 restic_repositories: []
+
+restic_helpers_enable: True
+restic_helpers_owner: "{{ restic_owner }}"
+restic_helpers_group: "{{ restic_group }}"
+restic_helper_dir: "{{ restic_bin_dir }}"
+restic_helper_mode: '0750'

@@ -1,4 +1,12 @@
 ---
+- name: Deploy helper scripts
+  template:
+    src: "restic-helper.j2"
+    dest: "{{ restic_helper_dir }}/restic-{{ item.name }}"
+    mode: "{{ restic_helper_mode }}"
+  with_items: '{{ restic_repositories }}'
+  when: restic_helpers_enable
+
 - name: Init repositories
   command: '{{ restic_bin_dir }}/restic init'
   environment: "{{ item.environment | d({}) | combine({'RESTIC_PASSWORD': item.password | trim | quote, 'RESTIC_REPOSITORY': item.url | trim | quote}) }}"
