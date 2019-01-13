@@ -1,0 +1,44 @@
+{{ ansible_managed | comment }}
+
+# Environment setup
+SHELL=/bin/sh
+RESTIC_REPOSITORY={{ item.url | trim | quote }}
+RESTIC_PASSWORD={{ item.password | trim | quote }}
+{% if item.environment is defined %}
+{% for k,v in item.environment.items() %}
+{{ k | upper }}={{ v | trim | quote }}
+{% endfor %}
+{% endif %}
+
+{% if item.forget is defined -%}
+# Cleanup old snapshots
+{{ item.forget.time | default('0 0 * * *') }} {{ item.forget.user | default('root') }} {{ restic_bin_dir }}/restic forget --prune
+{%- if item.forget.last is defined %} --keep-last {{ item.forget.last }}{% endif -%}
+{%- if item.forget.hourly is defined %} --keep-hourly {{ item.forget.hourly }}{% endif -%}
+{%- if item.forget.daily is defined %} --keep-daily {{ item.forget.daily }}{% endif -%}
+{%- if item.forget.weekly is defined %} --keep-weekly {{ item.forget.weekly }}{% endif -%}
+{%- if item.forget.monthly is defined %} --keep-monthly {{ item.forget.monthly }}{% endif -%}
+{%- if item.forget.yearly is defined %} --keep-yearly {{ item.forget.yearly }}{% endif -%}
+{%- if item.forget.tags is defined %} --keep-tag {% for tag in item.forget.tags %}{{ tag }}{% if not loop.last %},{% endif %}{% endfor %}{% endif -%}
+
+{% endif %}
+
+
+{% if item.jobs is defined -%}
+# Run jobs
+{% for job in item.jobs %}
+    {%- if job.type is not defined or job.type == "path" %}
+{{ job.time | default('0 0 * * *') }} {{ job.user | default('root') }} {{ restic_bin_dir }}/restic backup {{ job.path | trim | quote }}   
+    {%- elif job.type == "paths" %}
+{{ job.time | default('0 0 * * *') }} {{ job.user | default('root') }} {{ restic_bin_dir }}/restic backup {% for path in job.paths %}{{ path | trim | quote }}{% if not loop.last %} {% endif %}{% endfor %}   
+    {%- endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if item.jobs_raw is defined %}
+{% for job in item.jobs_raw %}
+{{ job.time | default('0 0 * * *') }} {{ job.user | default('root') }} {{ job.command }}
+
+{% endfor %}
+{% endif %}
